@@ -399,6 +399,145 @@ Both are pinned by regression tests in `tests/test_operate.py`, including the
 
 ---
 
+## V5: workload classes, and the deadline that mostly does not matter
+
+Every number in V2 and V3 rests on an assumption stated nowhere in them: that
+annual compute is one fungible pool, so work given up in August can be made good
+in November. That is the most flexible workload that can exist, which makes
+every earlier result an upper bound (landmine 12). This puts deadlines on the
+work and measures how much of the bound is real.
+
+### It did not need a MILP, and that is a result
+
+The roadmap said V5 "needs MILP or a rolling relaxation". It does not. A
+deadline is a cumulative delivery constraint over a window, which is linear. The
+obstacle is the *fleet split*: writing the power-performance curve in fractional
+terms, `compute_frac ≤ m·p_k/N_k + c`, divides by a decision variable. Writing
+the same curve in absolute terms does not:
+
+    compute_k(t) ≤ m_j · power_k(t) + c_j · active_k(t)
+
+Both terms are a constant times a variable, so the split stays free and the
+model stays an LP. Integers are needed for discrete *commitment* — a minimum
+unbroken run, whole-job admission, a checkpoint restart cost — and none of those
+are modelled here. That matters practically: it is what keeps a fourteen-year
+sweep affordable.
+
+Two formulation errors were worth the time they cost. A **fixed** per-class
+partition of the fleet makes a peaky inference load *infeasible* against rigid
+compute, because constant per-class output cannot follow varying demand —
+allocation has to be hourly, which is what a real cluster scheduler does when
+preemptible batch backfills the capacity inference is not using at 4am. And
+binding `p_it` and `compute` to the class variables with equality constraints
+added 17,520 redundant rows; making them expressions instead took the
+single-class solve from 66s to **40s**, faster than the model it generalises.
+
+### How much of the bound is real
+
+All work deadline-bound, at a 60 MW interconnection, 2019 prices, 98% target:
+
+| delivery window | LCOC | vs rigid | gen MW | value retained |
+|---|---:|---:|---:|---:|
+| rigid | 1.1594 | — | 152.0 | — |
+| annual (V1's pool) | 1.1425 | −1.461% | 27.8 | 100% |
+| monthly | 1.1506 | −0.764% | 78.9 | 52% |
+| weekly | 1.1530 | −0.553% | 93.9 | 38% |
+| daily | 1.1569 | −0.219% | 111.2 | 15% |
+| six hours | 1.1611 | **+0.142%** | 128.3 | **−10%** |
+
+A monthly deadline halves the value of flexibility, a weekly one removes 62% of
+it, and at a six-hour window **the trade reverses** — buying flexibility is worse
+than building rigid. The generator climbs back from 27.8 MW toward rigid's 152 as
+the window shrinks, which is the same story V2 told in reverse: what flexibility
+displaces is the plant you built for the worst hours, and it can only displace it
+if it is allowed to move work far enough to reach them.
+
+### But almost no realistic mix is affected at all
+
+Every mixed workload tested returns **the pool's answer exactly** — same LCOC to
+six digits, same 335.3 MW of PV, same 27.8 MW of generator:
+
+| mix | LCOC | retained |
+|---|---:|---:|
+| 50% weekly deadline + 50% batch | 1.1425 | 100% |
+| 75% weekly deadline + 25% batch | 1.1425 | 100% |
+| 90% weekly deadline + 10% batch | 1.1425 | 100% |
+| 30% inference + 70% batch | 1.1425 | 100% |
+| 60% inference + 40% batch | 1.1425 | 100% |
+| 30% inference + 50% weekly + 20% batch | 1.1425 | 100% |
+
+Non-deferrable inference at 60% of the fleet costs nothing. A weekly training
+deadline on 90% of the fleet costs nothing.
+
+### Why, and the threshold that predicts it
+
+Because **the optimiser does not want to interrupt.** The pool's own schedule
+never drops below **91.5%** compute in any hour of the year; it takes its 2%
+by shaving a little power across **3,079 hours** rather than cutting deeply in a
+few. The concave curve is what makes that the efficient shape — shallow
+throttling gives up very little compute for the power it releases.
+
+So a class floor only bites if it sits above what the pool was going to deliver
+anyway. That gives an exact, checkable rule. A deadline class binds only when
+
+    compute_target × deadline_share  >  the pool's lowest window-mean compute
+
+| window | pool's lowest window mean | binds above deadline share |
+|---|---:|---:|
+| annual | 0.9800 | 100.0% |
+| monthly | 0.9485 | 96.8% |
+| weekly | 0.9345 | **95.4%** |
+| daily | 0.9152 | 93.4% |
+
+Tested against the weekly threshold of 95.4%: shares of 92% and 95% come back
+bit-identical to the pool, and 98% binds (LCOC 1.142994, generator 27.8 → 44.8
+MW). The rule predicts the transition rather than describing it after the fact.
+
+**Five percent of genuinely flexible work buys back all of it.** Anything short
+of a fleet that is essentially entirely deadline-bound pays nothing for its
+deadlines.
+
+### What this says about landmine 12, and about what to sell
+
+Landmine 12 was right that "GPU-equivalent hours" hides deadlines. It was wrong
+about the consequence. The hidden deadline costs nothing across the realistic
+range, and the reason is that the flexibility being exercised is *shallow and
+continuous* rather than deep and occasional.
+
+That reframes the product. What the optimiser wants is **"run 2% slower for
+three thousand hours"**, not **"go dark 8% of the time"** — and those are
+different things to sell, to contract for, and to operate. It also closes
+landmine 5 from the other side: a uniform mild clock cap applied across a whole
+job is precisely the one form of throttling a synchronous data-parallel training
+run *can* accept, because there is no straggler if every worker is capped
+equally. The control this study says is valuable is the control the hardware can
+actually offer.
+
+The caveat is that none of this survives if the flexibility gets deep. At V1's
+"8% annual compute" headline the cuts would have to be much deeper than 91.5%,
+and deadlines would bite hard. The shallow-throttle result is a property of the
+2% optimum, not a general licence.
+
+### A warning that is not ours
+
+Multi-class solves emit `RuntimeWarning: invalid value encountered in reduce`.
+It comes from inside CVXPY — `atoms/affine/sum.py:90`, computing an expression's
+shape while `cp.sum(produced[window])` builds one Sum atom per delivery window —
+not from any array in this repository. Every results file is checked for NaN and
+infinity and is clean. Recorded because an unexplained warning in a study that
+pins bugs by regression test is a liability, and "it turned out to be upstream"
+is only worth anything if somebody actually looked.
+
+### Cost, and why V6 does not include this
+
+A three-class solve is **1,126 seconds** against 40 for the pool — the hourly
+allocation variables introduce a large family of alternate optima that the
+simplex walks through to reach an answer that is, in every mixed case tested,
+identical to the pool's. Until that is fixed, a fourteen-year workload sweep is a
+different order of expense, which is why V6 runs the pool model and says so.
+
+---
+
 ## V6: is it a finding, or a fact about 2019?
 
 Every rung above ran on one weather year at one site. V3 showed that is not a
@@ -569,8 +708,16 @@ reduces fade, a second-order benefit worth capturing — project 1 already has
 rainflow counting and a fade surrogate.
 
 **12. "GPU-equivalent hours" hides deadlines.** A throttled GPU-hour and a full
-one are not fungible for a deadline-bound training run. Acceptable in V1; it is
-exactly what workload classes in V5 exist to fix.
+one are not fungible for a deadline-bound training run. ~~Acceptable in V1.~~
+**Measured in V5, and the consequence is the opposite of the worry.** Across
+every realistic mix the deadline costs *nothing* — 60% non-deferrable inference,
+or a weekly deadline on 90% of the fleet, reproduce the fungible pool's answer
+exactly — because the optimiser's preferred flexibility is shallow and
+continuous (never below 91.5% compute, spread over 3,079 hours) rather than deep
+and occasional. Deadlines bite only above ~95% deadline-bound share, or when the
+window falls to hours. Do not assume the pool assumption is conservative; check
+it against the pool's own lowest window-mean compute, which predicts the
+transition exactly.
 
 **13. The price record is shorter than the weather record.** ERCOT's nodal
 market opened 1 December 2010. Weather goes back to 2010 and prices do not, so a
@@ -593,12 +740,17 @@ twenty lines each in an LP. What is genuinely hard comes later.
 | **V2** ✅ | Interconnection-constrained sweep; the crossover where flexibility starts paying | `run_grid_sweep.py`, `run_crossover.py` |
 | **V3** ✅ | Real ERCOT day-ahead prices, same year and node as the weather | `prices.py`, `run_v3_prices.py` |
 | **V4** ✅ | Foresight validation: size by LP, operate under a receding horizon, report the gap | `run_v4_foresight.py`, `summarise_v4.py` |
-| **V5** | Workload classes, deadlines, inference SLAs | needs MILP or a rolling relaxation |
+| **V5** ✅ | Workload classes, deadlines, inference SLAs | `workload.py`, `run_v5_workload.py` — **stayed an LP** |
 | **V6** | All fourteen overlapping years × sites; is the sign stable? | the publishable artefact |
 | **V7** | Interactive web app over a precomputed result cube | [`docs/web-app-todo.md`](docs/web-app-todo.md) |
 
-MILP arrives only at V5, and only for deadline coupling. Everything before it
-stays an LP, which is what keeps a fifteen-year × multi-site sweep affordable.
+~~MILP arrives only at V5, and only for deadline coupling.~~ It did not: V5's
+deadlines are cumulative window constraints, and the fleet split stays linear if
+the power-performance curve is written absolutely rather than fractionally. The
+whole ladder is still an LP, which is what kept the fourteen-year × two-site
+sweep affordable. Integers are still needed for discrete commitment — minimum
+run durations, whole-job admission, checkpoint restart costs — and that is now
+the V8 item rather than the V5 one.
 
 ---
 

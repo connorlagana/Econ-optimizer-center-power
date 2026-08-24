@@ -21,8 +21,16 @@ from tecopt.inputs import Limits, Scenario
 from tecopt.model import optimise
 
 
+#: Structural tests run on a short horizon, not a year. The model is generic in
+#: T, and a multi-class annual solve is ~19 minutes -- the hourly allocation
+#: variables admit a large family of alternate optima. Four weeks exercises every
+#: constraint shape (including several deadline windows) in seconds. The
+#: equivalences that have to hold on the real problem are marked and run a year.
+SHORT_HOURS = 672
+
+
 @pytest.fixture(scope="module")
-def context():
+def year_context():
     from dataclasses import replace
 
     scenario = replace(Scenario(), limits=Limits(max_grid_mw=60.0))
@@ -34,6 +42,16 @@ def context():
         "coincident_peak_mask": site.coincident_peak_window(index),
         "local_hour": np.asarray(index.hour),
     }
+
+
+@pytest.fixture(scope="module")
+def context(year_context):
+    """The same site and costs, truncated to four weeks."""
+    short = dict(year_context)
+    short["cf"] = year_context["cf"][:SHORT_HOURS]
+    short["coincident_peak_mask"] = year_context["coincident_peak_mask"][:SHORT_HOURS]
+    short["local_hour"] = year_context["local_hour"][:SHORT_HOURS]
+    return short
 
 
 def _solve(context, **kwargs):
@@ -59,13 +77,19 @@ def test_annual_window_equals_batch(context):
                    workload=workload.single_pool())
     annual = _solve(context, flexibility="powercap", compute_target_fraction=0.98,
                     workload=workload.WorkloadMix((
-                        workload.WorkloadClass("t", "deadline", 1.0, window_hours=8760),
+                        workload.WorkloadClass("t", "deadline", 1.0,
+                                               window_hours=SHORT_HOURS),
                     )))
     assert annual.lcoc_per_gpu_hour == pytest.approx(batch.lcoc_per_gpu_hour, rel=1e-6)
 
 
-def test_single_pool_reproduces_the_unstructured_model(context):
-    """The V5 formulation must collapse exactly onto V1 through V4."""
+def test_single_pool_reproduces_the_unstructured_model(year_context):
+    """The V5 formulation must collapse exactly onto V1 through V4.
+
+    On the real problem, not a slice: this is the claim every V5 comparison
+    against an earlier rung depends on.
+    """
+    context = year_context
     unstructured = _solve(context, flexibility="powercap", compute_target_fraction=0.98)
     pooled = _solve(context, flexibility="powercap", compute_target_fraction=0.98,
                     workload=workload.single_pool())
@@ -75,13 +99,14 @@ def test_single_pool_reproduces_the_unstructured_model(context):
     assert pooled.design.pv_mw == pytest.approx(unstructured.design.pv_mw, rel=1e-4)
 
 
-def test_rigid_is_invariant_to_workload_structure(context):
+def test_rigid_is_invariant_to_workload_structure(year_context):
     """A plant that never throttles has no scheduling problem.
 
     Rigid compute pins power to nameplate every hour, so the plant sees the same
     load whatever the work is. If this ever fails, workload structure has leaked
     into the power model and the V5 comparison is measuring two things at once.
     """
+    context = year_context
     plain = _solve(context, flexibility="rigid", compute_target_fraction=1.0)
     mixed = _solve(context, flexibility="rigid", compute_target_fraction=1.0,
                    workload=workload.default_mix(0.30, 0.50, 168))
@@ -91,18 +116,27 @@ def test_rigid_is_invariant_to_workload_structure(context):
 def test_tighter_deadlines_cannot_be_cheaper(context):
     """Shrinking a window only removes schedules. Cost must be monotone."""
     loose = _solve(context, flexibility="powercap", compute_target_fraction=0.98,
-                   workload=workload.default_mix(0.0, 1.0, 730))
+                   workload=workload.default_mix(0.0, 1.0, 168))
     tight = _solve(context, flexibility="powercap", compute_target_fraction=0.98,
-                   workload=workload.default_mix(0.0, 1.0, 24))
+                   workload=workload.default_mix(0.0, 1.0, 6))
     assert tight.annual_cost >= loose.annual_cost - 1.0
 
 
 def test_allocation_is_conserved(context):
-    """Classes share one fleet; the shares must add up to it every hour."""
+    """Classes share one fleet, hour by hour.
+
+    The conserved quantity is the *per-hour* sum, so the per-class means sum to
+    nameplate exactly. Summing the per-class peaks does not: those maxima fall in
+    different hours, and their sum legitimately exceeds the fleet.
+    """
     r = _solve(context, flexibility="powercap", compute_target_fraction=0.98,
                workload=workload.default_mix(0.30, 0.50, 168))
-    peak = sum(r.workload["peak_allocation_mw"].values())
-    assert peak <= Scenario().gpus.it_nameplate_mw * 1.001
+    nameplate = Scenario().gpus.it_nameplate_mw
+    assert sum(r.workload["mean_allocation_mw"].values()) == pytest.approx(
+        nameplate, rel=1e-6
+    )
+    for name, peak in r.workload["peak_allocation_mw"].items():
+        assert peak <= nameplate * (1 + 1e-6), name
 
 
 def test_inference_profile_matches_its_documentation():

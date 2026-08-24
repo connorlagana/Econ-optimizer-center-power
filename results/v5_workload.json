@@ -1,0 +1,583 @@
+{
+ "year": 2019,
+ "settlement_point": "LZ_NORTH",
+ "grid_ceiling_mw": 60.0,
+ "compute_target": 0.98,
+ "inference_peak_hour_local": 19.0,
+ "inference_peak_to_trough": 2.2,
+ "runs": [
+  {
+   "label": "rigid (no workload structure)",
+   "mode": "rigid",
+   "compute_target": 1.0,
+   "lcoc": 1.1594364702704294,
+   "infra_per_year": 99334826.40926337,
+   "pv_mw": 357.13329507325,
+   "bess_mw": 150.9080122100055,
+   "bess_mwh": 1155.2080842960058,
+   "gen_mw": 152.00506098070088,
+   "coincident_peak_mw": 0.0,
+   "mean_it_power_fraction": 1.0,
+   "workload": null,
+   "solve_seconds": 7.791828458197415
+  },
+  {
+   "label": "pool -- V1 through V4",
+   "mode": "powercap",
+   "compute_target": 0.98,
+   "lcoc": 1.1424921873142555,
+   "infra_per_year": 74435072.84401381,
+   "pv_mw": 335.30905488308036,
+   "bess_mw": 138.95804222208875,
+   "bess_mwh": 1120.8353033031149,
+   "gen_mw": 27.838468602491304,
+   "coincident_peak_mw": 0.0,
+   "mean_it_power_fraction": 0.9271246643894527,
+   "workload": null,
+   "solve_seconds": 72.8766990415752
+  },
+  {
+   "label": "100% deadline, 8760h window",
+   "mode": "powercap",
+   "compute_target": 0.98,
+   "lcoc": 1.1424921873142553,
+   "infra_per_year": 74435072.84401393,
+   "pv_mw": 335.30905488308036,
+   "bess_mw": 138.95804222208875,
+   "bess_mwh": 1120.8353033031149,
+   "gen_mw": 27.838468602492103,
+   "coincident_peak_mw": 0.0,
+   "mean_it_power_fraction": 0.9271246643894534,
+   "workload": {
+    "classes": [
+     {
+      "name": "training_deadline",
+      "kind": "deadline",
+      "share_of_compute": 1.0,
+      "window_hours": 8760,
+      "sla_fraction": 1.0
+     }
+    ],
+    "mean_allocation_mw": {
+     "training_deadline": 100.0
+    },
+    "peak_allocation_mw": {
+     "training_deadline": 100.0
+    },
+    "delivered_fraction_of_fleet_year": {
+     "training_deadline": 0.9800000000000049
+    },
+    "mean_power_fraction": {
+     "training_deadline": 0.9271246643894534
+    }
+   },
+   "solve_seconds": 40.15827920753509
+  },
+  {
+   "label": "100% deadline, 730h window",
+   "mode": "powercap",
+   "compute_target": 0.98,
+   "lcoc": 1.1505781420576835,
+   "infra_per_year": 79393380.29269516,
+   "pv_mw": 313.1241146257806,
+   "bess_mw": 129.74249212482434,
+   "bess_mwh": 1040.4510781411211,
+   "gen_mw": 78.93116588170307,
+   "coincident_peak_mw": 0.0,
+   "mean_it_power_fraction": 0.9202133557001604,
+   "workload": {
+    "classes": [
+     {
+      "name": "training_deadline",
+      "kind": "deadline",
+      "share_of_compute": 1.0,
+      "window_hours": 730,
+      "sla_fraction": 1.0
+     }
+    ],
+    "mean_allocation_mw": {
+     "training_deadline": 100.0
+    },
+    "peak_allocation_mw": {
+     "training_deadline": 100.0
+    },
+    "delivered_fraction_of_fleet_year": {
+     "training_deadline": 0.9800000000000203
+    },
+    "mean_power_fraction": {
+     "training_deadline": 0.9202133557001604
+    }
+   },
+   "solve_seconds": 26.098859874531627
+  },
+  {
+   "label": "100% deadline, 168h window",
+   "mode": "powercap",
+   "compute_target": 0.98,
+   "lcoc": 1.1530238590975808,
+   "infra_per_year": 80893093.98155916,
+   "pv_mw": 309.692134847713,
+   "bess_mw": 125.39145971295864,
+   "bess_mwh": 1001.7812490021657,
+   "gen_mw": 93.93632009892809,
+   "coincident_peak_mw": 0.0,
+   "mean_it_power_fraction": 0.9193141244744284,
+   "workload": {
+    "classes": [
+     {
+      "name": "training_deadline",
+      "kind": "deadline",
+      "share_of_compute": 1.0,
+      "window_hours": 168,
+      "sla_fraction": 1.0
+     }
+    ],
+    "mean_allocation_mw": {
+     "training_deadline": 100.0
+    },
+    "peak_allocation_mw": {
+     "training_deadline": 100.0
+    },
+    "delivered_fraction_of_fleet_year": {
+     "training_deadline": 0.9800000000000189
+    },
+    "mean_power_fraction": {
+     "training_deadline": 0.9193141244744284
+    }
+   },
+   "solve_seconds": 34.99123091623187
+  },
+  {
+   "label": "100% deadline, 24h window",
+   "mode": "powercap",
+   "compute_target": 0.98,
+   "lcoc": 1.1568937080167494,
+   "infra_per_year": 83266085.33878791,
+   "pv_mw": 313.2853030069493,
+   "bess_mw": 121.43366457659141,
+   "bess_mwh": 954.2240096397674,
+   "gen_mw": 111.24132136554988,
+   "coincident_peak_mw": 0.0,
+   "mean_it_power_fraction": 0.9191697900663165,
+   "workload": {
+    "classes": [
+     {
+      "name": "training_deadline",
+      "kind": "deadline",
+      "share_of_compute": 1.0,
+      "window_hours": 24,
+      "sla_fraction": 1.0
+     }
+    ],
+    "mean_allocation_mw": {
+     "training_deadline": 100.0
+    },
+    "peak_allocation_mw": {
+     "training_deadline": 100.0
+    },
+    "delivered_fraction_of_fleet_year": {
+     "training_deadline": 0.9800000000000111
+    },
+    "mean_power_fraction": {
+     "training_deadline": 0.9191697900663165
+    }
+   },
+   "solve_seconds": 30.000697665847838
+  },
+  {
+   "label": "100% deadline, 6h window",
+   "mode": "powercap",
+   "compute_target": 0.98,
+   "lcoc": 1.1610848303299632,
+   "infra_per_year": 85836081.54114664,
+   "pv_mw": 308.5596168084874,
+   "bess_mw": 121.99343200061705,
+   "bess_mwh": 954.8745555360723,
+   "gen_mw": 128.3101884143007,
+   "coincident_peak_mw": 0.0,
+   "mean_it_power_fraction": 0.9175766134434299,
+   "workload": {
+    "classes": [
+     {
+      "name": "training_deadline",
+      "kind": "deadline",
+      "share_of_compute": 1.0,
+      "window_hours": 6,
+      "sla_fraction": 1.0
+     }
+    ],
+    "mean_allocation_mw": {
+     "training_deadline": 100.0
+    },
+    "peak_allocation_mw": {
+     "training_deadline": 100.0
+    },
+    "delivered_fraction_of_fleet_year": {
+     "training_deadline": 0.9799999999998681
+    },
+    "mean_power_fraction": {
+     "training_deadline": 0.91757661344343
+    }
+   },
+   "solve_seconds": 37.3351967073977
+  },
+  {
+   "label": "50% deadline (weekly) + batch",
+   "mode": "powercap",
+   "compute_target": 0.98,
+   "lcoc": 1.1424921873142548,
+   "infra_per_year": 74435072.84401274,
+   "pv_mw": 335.30905488308036,
+   "bess_mw": 138.95804222208875,
+   "bess_mwh": 1120.8353033031149,
+   "gen_mw": 27.83846860248499,
+   "coincident_peak_mw": 0.0,
+   "mean_it_power_fraction": 0.9271246643894497,
+   "workload": {
+    "classes": [
+     {
+      "name": "training_deadline",
+      "kind": "deadline",
+      "share_of_compute": 0.5,
+      "window_hours": 168,
+      "sla_fraction": 1.0
+     },
+     {
+      "name": "batch",
+      "kind": "batch",
+      "share_of_compute": 0.5,
+      "window_hours": null,
+      "sla_fraction": 1.0
+     }
+    ],
+    "mean_allocation_mw": {
+     "training_deadline": 50.051346190913364,
+     "batch": 49.948653809086636
+    },
+    "peak_allocation_mw": {
+     "training_deadline": 100.0,
+     "batch": 100.0
+    },
+    "delivered_fraction_of_fleet_year": {
+     "training_deadline": 0.4900000000000091,
+     "batch": 0.48999999999999455
+    },
+    "mean_power_fraction": {
+     "training_deadline": 0.9237051720358321,
+     "batch": 0.9305511870789752
+    }
+   },
+   "solve_seconds": 395.9388423329219
+  },
+  {
+   "label": "75% deadline (weekly) + batch",
+   "mode": "powercap",
+   "compute_target": 0.98,
+   "lcoc": 1.1424921873142486,
+   "infra_per_year": 74435072.84399891,
+   "pv_mw": 335.30905488308036,
+   "bess_mw": 138.95804222208875,
+   "bess_mwh": 1120.8353033031149,
+   "gen_mw": 27.838468602407485,
+   "coincident_peak_mw": 0.0,
+   "mean_it_power_fraction": 0.9271246643894098,
+   "workload": {
+    "classes": [
+     {
+      "name": "training_deadline",
+      "kind": "deadline",
+      "share_of_compute": 0.75,
+      "window_hours": 168,
+      "sla_fraction": 1.0
+     },
+     {
+      "name": "batch",
+      "kind": "batch",
+      "share_of_compute": 0.25,
+      "window_hours": null,
+      "sla_fraction": 1.0
+     }
+    ],
+    "mean_allocation_mw": {
+     "training_deadline": 75.06245838069486,
+     "batch": 24.937541619305144
+    },
+    "peak_allocation_mw": {
+     "training_deadline": 100.0,
+     "batch": 100.0
+    },
+    "delivered_fraction_of_fleet_year": {
+     "training_deadline": 0.7349999999999891,
+     "batch": 0.24500000000000038
+    },
+    "mean_power_fraction": {
+     "training_deadline": 0.9242880244188917,
+     "batch": 0.9356630028101944
+    }
+   },
+   "solve_seconds": 398.4723976254463
+  },
+  {
+   "label": "90% deadline (weekly) + batch",
+   "mode": "powercap",
+   "compute_target": 0.98,
+   "lcoc": 1.1424921873142548,
+   "infra_per_year": 74435072.8440131,
+   "pv_mw": 335.30905488308036,
+   "bess_mw": 138.95804222208875,
+   "bess_mwh": 1120.8353033031149,
+   "gen_mw": 27.83846860248751,
+   "coincident_peak_mw": 0.0,
+   "mean_it_power_fraction": 0.9271246643894508,
+   "workload": {
+    "classes": [
+     {
+      "name": "training_deadline",
+      "kind": "deadline",
+      "share_of_compute": 0.9,
+      "window_hours": 168,
+      "sla_fraction": 1.0
+     },
+     {
+      "name": "batch",
+      "kind": "batch",
+      "share_of_compute": 0.09999999999999998,
+      "window_hours": null,
+      "sla_fraction": 1.0
+     }
+    ],
+    "mean_allocation_mw": {
+     "training_deadline": 90.05714358186931,
+     "batch": 9.942856418130692
+    },
+    "peak_allocation_mw": {
+     "training_deadline": 100.0,
+     "batch": 100.0
+    },
+    "delivered_fraction_of_fleet_year": {
+     "training_deadline": 0.8820000000000033,
+     "batch": 0.09800000000000073
+    },
+    "mean_power_fraction": {
+     "training_deadline": 0.924952564901267,
+     "batch": 0.9467983946793481
+    }
+   },
+   "solve_seconds": 350.98965462483466
+  },
+  {
+   "label": "30% inference + batch",
+   "mode": "powercap",
+   "compute_target": 0.98,
+   "lcoc": 1.1424921873142533,
+   "infra_per_year": 74435072.8440094,
+   "pv_mw": 335.30905488308036,
+   "bess_mw": 138.9580422220888,
+   "bess_mwh": 1120.835303303115,
+   "gen_mw": 27.838468602466385,
+   "coincident_peak_mw": 0.0,
+   "mean_it_power_fraction": 0.9271246643894403,
+   "workload": {
+    "classes": [
+     {
+      "name": "inference",
+      "kind": "inference",
+      "share_of_compute": 0.3,
+      "window_hours": null,
+      "sla_fraction": 1.0
+     },
+     {
+      "name": "batch",
+      "kind": "batch",
+      "share_of_compute": 0.7,
+      "window_hours": null,
+      "sla_fraction": 1.0
+     }
+    ],
+    "mean_allocation_mw": {
+     "inference": 30.029825798397884,
+     "batch": 69.97017420160212
+    },
+    "peak_allocation_mw": {
+     "inference": 44.16863109224588,
+     "batch": 81.62500000000001
+    },
+    "delivered_fraction_of_fleet_year": {
+     "inference": 0.29399999999999993,
+     "batch": 0.6860000000000005
+    },
+    "mean_power_fraction": {
+     "inference": 0.9237975718798759,
+     "batch": 0.9285525872096625
+    }
+   },
+   "solve_seconds": 235.7020518342033
+  },
+  {
+   "label": "60% inference + batch",
+   "mode": "powercap",
+   "compute_target": 0.98,
+   "lcoc": 1.1424921873142542,
+   "infra_per_year": 74435072.84401143,
+   "pv_mw": 335.3090548830803,
+   "bess_mw": 138.95804222208878,
+   "bess_mwh": 1120.8353033031149,
+   "gen_mw": 27.838468602477658,
+   "coincident_peak_mw": 0.0,
+   "mean_it_power_fraction": 0.9271246643894461,
+   "workload": {
+    "classes": [
+     {
+      "name": "inference",
+      "kind": "inference",
+      "share_of_compute": 0.6,
+      "window_hours": null,
+      "sla_fraction": 1.0
+     },
+     {
+      "name": "batch",
+      "kind": "batch",
+      "share_of_compute": 0.4,
+      "window_hours": null,
+      "sla_fraction": 1.0
+     }
+    ],
+    "mean_allocation_mw": {
+     "inference": 60.052796416904734,
+     "batch": 39.947203583095266
+    },
+    "peak_allocation_mw": {
+     "inference": 88.33726218449176,
+     "batch": 63.25000000000001
+    },
+    "delivered_fraction_of_fleet_year": {
+     "inference": 0.5879999999999999,
+     "batch": 0.3920000000000025
+    },
+    "mean_power_fraction": {
+     "inference": 0.9241584956740257,
+     "batch": 0.9315837180910351
+    }
+   },
+   "solve_seconds": 267.9319435833022
+  },
+  {
+   "label": "30% inference + 50% weekly + 20% batch",
+   "mode": "powercap",
+   "compute_target": 0.98,
+   "lcoc": 1.142492187314256,
+   "infra_per_year": 74435072.84401584,
+   "pv_mw": 335.3090548830803,
+   "bess_mw": 138.95804222208878,
+   "bess_mwh": 1120.8353033031149,
+   "gen_mw": 27.838468602502598,
+   "coincident_peak_mw": 0.0,
+   "mean_it_power_fraction": 0.9271246643894586,
+   "workload": {
+    "classes": [
+     {
+      "name": "inference",
+      "kind": "inference",
+      "share_of_compute": 0.3,
+      "window_hours": null,
+      "sla_fraction": 1.0
+     },
+     {
+      "name": "training_deadline",
+      "kind": "deadline",
+      "share_of_compute": 0.5,
+      "window_hours": 168,
+      "sla_fraction": 1.0
+     },
+     {
+      "name": "batch",
+      "kind": "batch",
+      "share_of_compute": 0.19999999999999996,
+      "window_hours": null,
+      "sla_fraction": 1.0
+     }
+    ],
+    "mean_allocation_mw": {
+     "inference": 30.029399089036904,
+     "training_deadline": 50.015854359503294,
+     "batch": 19.954746551459806
+    },
+    "peak_allocation_mw": {
+     "inference": 44.16863109224588,
+     "training_deadline": 81.62500000000001,
+     "batch": 81.625
+    },
+    "delivered_fraction_of_fleet_year": {
+     "inference": 0.2940000000000056,
+     "training_deadline": 0.48999999999999994,
+     "batch": 0.1960000000000013
+    },
+    "mean_power_fraction": {
+     "inference": 0.9238371656445776,
+     "training_deadline": 0.9259693762621242,
+     "batch": 0.9349676271718308
+    }
+   },
+   "solve_seconds": 968.9180269157514
+  },
+  {
+   "label": "rigid (3-class mix)",
+   "mode": "rigid",
+   "compute_target": 1.0,
+   "lcoc": 1.1594364702704423,
+   "infra_per_year": 99334826.40926301,
+   "pv_mw": 357.13329507325,
+   "bess_mw": 150.9080122100055,
+   "bess_mwh": 1155.208084296006,
+   "gen_mw": 152.00506098070082,
+   "coincident_peak_mw": 0.0,
+   "mean_it_power_fraction": 0.9999999999999883,
+   "workload": {
+    "classes": [
+     {
+      "name": "inference",
+      "kind": "inference",
+      "share_of_compute": 0.3,
+      "window_hours": null,
+      "sla_fraction": 1.0
+     },
+     {
+      "name": "training_deadline",
+      "kind": "deadline",
+      "share_of_compute": 0.5,
+      "window_hours": 168,
+      "sla_fraction": 1.0
+     },
+     {
+      "name": "batch",
+      "kind": "batch",
+      "share_of_compute": 0.19999999999999996,
+      "window_hours": null,
+      "sla_fraction": 1.0
+     }
+    ],
+    "mean_allocation_mw": {
+     "inference": 29.999999999998938,
+     "training_deadline": 50.0,
+     "batch": 19.99999999999989
+    },
+    "peak_allocation_mw": {
+     "inference": 41.25,
+     "training_deadline": 81.25,
+     "batch": 81.25
+    },
+    "delivered_fraction_of_fleet_year": {
+     "inference": 0.2999999999999894,
+     "training_deadline": 0.5,
+     "batch": 0.1999999999999989
+    },
+    "mean_power_fraction": {
+     "inference": 1.0,
+     "training_deadline": 1.0,
+     "batch": 1.0
+    }
+   },
+   "solve_seconds": 30.43213870935142
+  }
+ ]
+}

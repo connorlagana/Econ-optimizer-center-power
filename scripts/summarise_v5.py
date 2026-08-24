@@ -43,9 +43,10 @@ def main() -> None:
     print(f"{'rigid (any workload)':<36} {rigid['lcoc']:9.4f} {'--':>10} "
           f"{rigid['infra_per_year'] / 1e6:9.1f} {rigid['gen_mw']:8.1f} {'--':>10}")
 
-    order = ["pool -- V1 through V4"]
-    order += [k for k in runs if k.startswith("deadline ")]
-    order += [k for k in runs if k.startswith("inference ")]
+    order = [
+        r["label"] for r in payload["runs"]
+        if not r["label"].startswith("rigid")
+    ]
 
     for label in order:
         r = runs.get(label)
