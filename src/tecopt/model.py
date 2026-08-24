@@ -82,6 +82,7 @@ class Result:
     flexibility: Flexibility
     compute_target_fraction: float
     status: str
+    price_basis: dict
     design: Design
     annual_cost: float
     cost_breakdown: dict
@@ -124,6 +125,8 @@ def optimise(
     flexibility: Flexibility = "powercap",
     compute_target_fraction: float = 1.0,
     coincident_peak_mask: np.ndarray | None = None,
+    energy_price_per_mwh: float | np.ndarray | None = None,
+    allow_export: bool = False,
     solver: str = "HIGHS",
     verbose: bool = False,
 ) -> Result:
@@ -135,9 +138,30 @@ def optimise(
 
     ``compute_target_fraction`` is a floor on annual compute as a fraction of
     what the fleet would produce running unconstrained every hour of the year.
+
+    ``energy_price_per_mwh`` may be a scalar or an 8760-hour array. Passing an
+    array is what V3 is for: a flat price cannot express that abundant solar and
+    cheap energy are the same hours, and that correlation is the single most
+    important structure in the problem (README landmine 6). ``None`` falls back
+    to the scenario's flat placeholder, which is what V1 and V2 used.
+
+    ``allow_export`` sells surplus PV at the same hourly price (README landmine
+    8). It is off by default because V1 and V2 assumed behind-the-meter, and
+    turning it on moves the optimal PV size by a factor rather than a margin.
+    Export is restricted to PV: exporting generator output is a merchant power
+    plant with a different permit, and exporting stored energy is price
+    arbitrage that deserves to be studied on its own rather than smuggled in
+    as a side effect of sizing a data center.
     """
     cf = np.asarray(pv_capacity_factor, dtype=float)
     T = cf.size
+
+    price = (
+        scenario.costs.energy_price_per_mwh
+        if energy_price_per_mwh is None
+        else energy_price_per_mwh
+    )
+    price = np.broadcast_to(np.asarray(price, dtype=float), (T,)).astype(float)
     s, c, g, f, st, lim = (
         scenario, scenario.costs, scenario.gpus,
         scenario.facility, scenario.storage, scenario.limits,
@@ -163,13 +187,33 @@ def optimise(
     gen_out = cp.Variable(T, nonneg=True)
     p_it = cp.Variable(T, nonneg=True)
     compute = cp.Variable(T, nonneg=True)
+    exports = cp.Variable(T, nonneg=True)
     cp_demand = cp.Variable(nonneg=True, name="coincident_peak_mw")
 
     cons: list = []
 
     # Solar: use no more than the array produced. The slack is curtailment,
     # which is free here because export is not modelled (behind-the-meter).
-    cons.append(pv_use <= cp.multiply(cf, pv_mw))
+    if allow_export:
+        # Export plus an unbounded interconnection and unbounded land is not a
+        # data-center study: it is a merchant solar farm with unlimited upside,
+        # and the LP will correctly report "unbounded" rather than a design.
+        # Whether it does depends on the price year, which is the point --
+        # at 2019 LZ_NORTH prices a merchant array clears its own cost by a few
+        # thousand dollars per MW-year, and at 2024 prices it misses by fifty.
+        # Refuse the ambiguous case explicitly rather than let the solver do it.
+        if lim.max_grid_mw is None and lim.max_pv_mw is None:
+            raise ValueError(
+                "allow_export=True requires Limits.max_grid_mw or Limits.max_pv_mw. "
+                "With export rights, an unlimited interconnection and unlimited land, "
+                "building solar is a separate business with no upper bound, and the "
+                "LP is unbounded whenever merchant PV happens to clear its cost in "
+                "the chosen price year. Set the interconnection the project can "
+                "actually procure (README landmine 10)."
+            )
+        cons.append(pv_use + exports <= cp.multiply(cf, pv_mw))
+    else:
+        cons += [pv_use <= cp.multiply(cf, pv_mw), exports == 0]
     if lim.max_pv_mw is not None:
         cons.append(pv_mw <= lim.max_pv_mw)
 
@@ -187,7 +231,10 @@ def optimise(
     # Grid. Interconnection size is a decision; the coincident-peak charge is
     # levied on the highest import inside the charging window, which is the
     # quantity flexibility can actually defend against.
-    cons.append(imports <= grid_mw)
+    # One interconnection, used in one direction at a time: the transformer does
+    # not care which way the power flows, and sizing it on imports alone would
+    # let export ride for free on a wire the study never charged for.
+    cons.append(imports + exports <= grid_mw)
     if lim.max_grid_mw is not None:
         cons.append(grid_mw <= lim.max_grid_mw)
     if coincident_peak_mask is not None and coincident_peak_mask.any():
@@ -226,6 +273,7 @@ def optimise(
     facility = overhead_fixed + overhead_mult * p_it
     cons.append(pv_use + discharge + imports + gen_out == facility + charge)
 
+
     # --- objective, annualised real USD ----------------------------------
     fin = s.financing
     ann_pv = 1000.0 * pv_mw * (c.pv_capex_per_kw_dc * crf(fin.discount_rate, fin.pv_life_years) + c.pv_fom_per_kw_yr)
@@ -238,13 +286,17 @@ def optimise(
         grid_mw * (c.interconnect_capex_per_kw * crf(fin.discount_rate, fin.grid_life_years) + c.transmission_fom_per_kw_yr)
         + cp_demand * c.coincident_peak_per_kw_yr
     )
-    ann_energy = cp.sum(imports) * c.energy_price_per_mwh
+    ann_energy = cp.sum(cp.multiply(price, imports))
+    ann_export_revenue = cp.sum(cp.multiply(price, exports))
     ann_fuel = cp.sum(gen_out) * (c.gen_heat_rate_mmbtu_per_mwh * c.gas_price_per_mmbtu + c.gen_vom_per_mwh)
     # Constant in the design, decisive in the ratio: an hour of compute forgone
     # strands GPU capital that is being paid for whether it computes or not.
     ann_gpu = g.total_capex * crf(fin.discount_rate, fin.gpu_life_years)
 
-    total = ann_pv + ann_bess + ann_gen + ann_grid + ann_energy + ann_fuel + ann_gpu
+    total = (
+        ann_pv + ann_bess + ann_gen + ann_grid + ann_energy + ann_fuel + ann_gpu
+        - ann_export_revenue
+    )
     problem = cp.Problem(cp.Minimize(total), cons)
     problem.solve(solver=solver, verbose=verbose)
 
@@ -276,6 +328,7 @@ def optimise(
         "grid_energy": float(ann_energy.value),
         "fuel": float(ann_fuel.value),
         "gpu_capital": float(ann_gpu),
+        "export_revenue": -float(ann_export_revenue.value),
     }
     gpu_hours = compute_hours * g.gpu_count
 
@@ -284,6 +337,14 @@ def optimise(
         flexibility=flexibility,
         compute_target_fraction=compute_target_fraction,
         status=problem.status,
+        price_basis={
+            "hourly": bool(np.ptp(price) > 0),
+            "mean_per_mwh": float(price.mean()),
+            "min_per_mwh": float(price.min()),
+            "max_per_mwh": float(price.max()),
+            "negative_hours": int((price < 0).sum()),
+            "allow_export": bool(allow_export),
+        },
         design=design,
         annual_cost=float(problem.value),
         cost_breakdown=breakdown,
@@ -300,9 +361,12 @@ def optimise(
             "gen_mw": arr(gen_out),
             "it_power_mw": arr(p_it),
             "compute_fraction": arr(compute),
+            "export_mw": arr(exports),
         },
-        variable_cost=float(ann_energy.value) + float(ann_fuel.value),
-        net_value=shadow * compute_hours - (float(ann_energy.value) + float(ann_fuel.value)),
+        variable_cost=float(ann_energy.value) + float(ann_fuel.value)
+        - float(ann_export_revenue.value),
+        net_value=shadow * compute_hours
+        - (float(ann_energy.value) + float(ann_fuel.value) - float(ann_export_revenue.value)),
         peak_import_mw=float(arr(imports).max()),
         coincident_peak_mw=v(cp_demand),
         gen_run_hours=float((arr(gen_out) > 1e-6).sum()),

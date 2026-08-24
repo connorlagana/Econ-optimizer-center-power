@@ -185,6 +185,131 @@ fixed and a secondary objective, or perturb costs and check the answer holds.
 
 ---
 
+## V3: real prices, and the shortcut that survived
+
+V1 and V2 priced grid energy at a flat $45/MWh. Landmine 6 says that is the
+study's largest open hole, so this closes it: ERCOT day-ahead settlement-point
+prices, `LZ_NORTH`, same year and node as the weather, 2011–2024 ingested and
+cached (`prices.py`, `scripts/fetch_prices.py`).
+
+Swapping a placeholder for a real series changes two independent things at once —
+the *level* of the price and its *shape* — so the experiment runs three bases and
+separates them: flat $45, flat at the year's actual mean, and the real hourly
+series. The middle rung is a correction to a wrong number. The gap between it and
+the third is the whole content of landmine 6.
+
+### The crossover does not move
+
+| basis | crossover | % of facility load |
+|---|---:|---:|
+| flat $45 placeholder | 106.6 MW | 85% |
+| flat at actual mean ($38.12) | 109.6 MW | 88% |
+| real hourly series | 108.4 MW | 87% |
+
+Three percent, on a quantity V2 was only ever willing to state as "roughly
+two-thirds to five-sixths of facility load". **The flat-price shortcut survived
+the question V2 asked**, and the reason is V1's own conclusion: flexibility is a
+capacity product. What it sells is avoided backup generation and avoided
+coincident-peak demand, both charged per kW. The hourly shape of an energy price
+moves energy cost, which is the part of the bill flexibility was never selling
+against.
+
+That is worth stating plainly because it is the opposite of what landmine 6
+predicts, and the landmine is not wrong — it is wrong about *which* result it
+threatens.
+
+### The design moves completely
+
+At a 125 MW interconnection, sizing for rigid compute:
+
+| basis | PV | BESS | imports | energy $/yr | 4CP demand |
+|---|---:|---:|---:|---:|---:|
+| flat $45 | **0 MW** | 0 MWh | 1,095 GWh | $49.3M | 125.0 MW |
+| flat at actual mean | **0 MW** | 0 MWh | 1,095 GWh | $41.7M | 125.0 MW |
+| real hourly | **113.6 MW** | 216 MWh | 865 GWh | $19.0M | 76.5 MW |
+
+A flat price says *build no solar at a grid-connected site*. The real price says
+*build 114 MW of it and a two-hour battery*, cuts imports by 21%, cuts the energy
+bill by 61%, and takes coincident-peak demand from 125 MW to 76.5 MW. Both
+answers came from the same optimiser on the same weather. So V1's headline
+LCOC was roughly right for a reason that had nothing to do with its being
+correctly modelled.
+
+### The mechanism is one number, and the optimiser is not needed to check it
+
+What a megawatt of PV is worth in a year is `Σ cf(t)·price(t)`. Against an
+annualised cost of $111,269/MW-yr at placeholder capex:
+
+| priced at | value | verdict |
+|---|---:|---|
+| the annual mean | $79,158/MW-yr | does not pay |
+| hour by hour | $151,370/MW-yr | pays |
+
+**A flat price undervalues solar by 48%** at this node and year, because solar
+produces disproportionately in hours priced above the mean — 2019's mean of
+$38.12 sits against a median of $20.86, so the level is set by a few hundred
+afternoon hours that are also sunny ones. That single ratio is the difference
+between building no solar and building 114 MW.
+
+### And its sign is not a constant of nature
+
+| year | PV value $/MW-yr | vs cost |
+|---:|---:|---:|
+| 2019 | 151,370 | 1.36× |
+| 2021 | 285,961 | 2.57× |
+| 2023 | 207,983 | 1.87× |
+| 2024 | 63,451 | **0.57×** |
+
+Solar pays for itself on energy value alone in 2019, pays 2.6× in the year of
+Uri, and **misses by 43% in 2024**. The same array, the same cost basis, four
+price years.
+
+The cause is visible in the price record without any model at all. Midday price
+at `LZ_WEST`, as a ratio to that year's annual mean:
+
+| 2011–2019 | 2020 | 2023 | 2024 |
+|---:|---:|---:|---:|
+| 1.15–1.54 | 0.99 | 0.78 | **0.51** |
+
+Midday was ERCOT's *expensive* time for the first decade of the nodal market and
+is now its cheapest, with 254 negative-price hours in 2024 against zero in 2019.
+Solar cannibalised its own capture price somewhere between 2020 and 2023, and
+**project 1's weather year sits on the far side of that inversion.**
+
+This is the finding that makes V6 mandatory rather than ornamental. It is not
+that a single year is noisy. It is that the structural relationship between
+solar output and price *changed sign mid-record*, so no single year is
+representative of any other, and a study quoting one year is quoting a regime
+rather than a climate.
+
+### Two smaller things this rung settled
+
+**Export is now a modelled switch** (landmine 8), restricted to PV — exporting
+generator output is a merchant plant with a different permit, and exporting
+stored energy is arbitrage that deserves its own study. It defaults off, because
+V1 and V2 assumed behind-the-meter and the comparison has to hold. Turning it on
+without an interconnection limit raises rather than solves: with export rights,
+unlimited land and an unlimited wire, merchant solar has no upper bound, and at
+2019 prices it clears its own cost by about $3k/MW-yr so the LP is genuinely
+unbounded. At 2024 prices it misses by $53k and the same model is bounded. The
+error message says so rather than letting the solver report `unbounded`.
+
+**The price record is shorter than the weather record.** ERCOT's nodal market
+opened on 1 December 2010, so 2010 is a one-month file. Fourteen years overlap,
+not fifteen, and `IncompletePriceYear` refuses the partial year rather than
+padding it.
+
+### What is still open here
+
+Day-ahead, not real-time. Real-time carries the scarcity spikes that make
+flexibility look valuable, but handing a year of them to a perfect-foresight LP
+measures clairvoyance rather than flexibility. Day-ahead is also the price a
+load can actually hedge to. The right home for real-time is V4's receding-horizon
+operator, where the controller cannot see ahead — that pairing is not yet built,
+and it is the most valuable single thing left undone in this repository.
+
+---
+
 ## V4: what survives when the controller stops being clairvoyant
 
 Every sizing above came from an LP that sees all 8,760 hours. This re-runs three
@@ -318,13 +443,22 @@ fleet is a separable job. Project 1's curve provenance already flags that the
 measurement is 4-GPU single-node and that cluster-scale straggler effects would
 flatten the curve. That flattening is a direct haircut on everything here.
 
-**6. Prices and weather must come from the same year and node.** West Texas PV
-output and ERCOT prices are strongly anti-correlated — solar crushes midday
-prices, including into negative territory for hundreds of hours a year in the
-high-solar zones — and heat drives scarcity pricing, cooling load and PV derate
-together. Model prices as an independent series and you destroy the single most
-important relationship in the problem. V1 uses a flat placeholder price and is
-honest that this is its largest open hole.
+**6. Prices and weather must come from the same year and node.** ~~V1 uses a
+flat placeholder price and is honest that this is its largest open hole.~~
+**Closed in V3, and the entry was right about the mechanism and wrong about the
+casualty.** A flat price undervalues solar by 48% at Dallas/`LZ_NORTH` in 2019,
+which is the difference between the optimiser building no solar and building
+114 MW of it — so the *design* was badly wrong. But the flexibility crossover
+moved by 3%, because flexibility sells avoided capacity and the energy price
+shape moves energy cost. Fix the prices to get the plant right; V2's headline
+did not depend on it.
+
+The anti-correlation this entry describes is also **not a fact about ERCOT, it
+is a fact about ERCOT after about 2021.** Midday price at `LZ_WEST` relative to
+the annual mean ran 1.15–1.54 from 2011 through 2019 and reached 0.51 in 2024;
+negative-price hours went from 0 to 254. Solar cannibalised its own capture price
+mid-record, and project 1's 2019 weather year is on the far side of the
+inversion. Never quote a single price year as though the regime were stationary.
 
 **7. 4CP is a forecasting problem, not a scheduling one.** Which four intervals
 set the charge is unknown until after the fact. Charging against four *known*
@@ -359,6 +493,12 @@ rainflow counting and a fade surrogate.
 one are not fungible for a deadline-bound training run. Acceptable in V1; it is
 exactly what workload classes in V5 exist to fix.
 
+**13. The price record is shorter than the weather record.** ERCOT's nodal
+market opened 1 December 2010. Weather goes back to 2010 and prices do not, so a
+"fifteen-year" sweep is fourteen years the moment prices are real. Stating the
+year count without stating which series binds it is how an off-by-one enters a
+headline.
+
 ---
 
 ## Roadmap
@@ -372,7 +512,7 @@ twenty lines each in an LP. What is genuinely hard comes later.
 |---|---|---|
 | **V1** ✅ | PV + BESS + grid + gas + concave curve, one LP, one year | done |
 | **V2** ✅ | Interconnection-constrained sweep; the crossover where flexibility starts paying | `run_grid_sweep.py`, `run_crossover.py` |
-| **V3** | Real ERCOT nodal prices, same year and node as the weather | closes landmine 6 |
+| **V3** ✅ | Real ERCOT day-ahead prices, same year and node as the weather | `prices.py`, `run_v3_prices.py` |
 | **V4** ✅ | Foresight validation: size by LP, operate under a receding horizon, report the gap | `run_v4_foresight.py`, `summarise_v4.py` |
 | **V5** | Workload classes, deadlines, inference SLAs | needs MILP or a rolling relaxation |
 | **V6** | All fifteen weather years × sites × cost cases; Pareto frontiers | the publishable artefact |
@@ -395,6 +535,9 @@ the prototype.
 ../solar-project-1/.venv/bin/python scripts/run_v1.py
 ../solar-project-1/.venv/bin/python scripts/run_grid_sweep.py
 ../solar-project-1/.venv/bin/python scripts/run_crossover.py
+../solar-project-1/.venv/bin/python scripts/fetch_prices.py       # once; warms data/prices
+../solar-project-1/.venv/bin/python scripts/run_v3_prices.py
+../solar-project-1/.venv/bin/python scripts/summarise_v3.py
 ../solar-project-1/.venv/bin/python scripts/run_v4_foresight.py
 ../solar-project-1/.venv/bin/python scripts/summarise_v4.py
 ../solar-project-1/.venv/bin/python -m pytest
