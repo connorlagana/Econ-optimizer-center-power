@@ -3,3 +3,8 @@ __pycache__/
 .venv/
 .pytest_cache/
 .DS_Store
+
+# ERCOT raw archives: 26 MB of zips that scripts/fetch_prices.py re-downloads on
+# demand. The derived parquet next to them is the artefact worth versioning --
+# it is a quarter the size and it is what every result was computed from.
+data/prices/raw/

@@ -741,7 +741,7 @@ twenty lines each in an LP. What is genuinely hard comes later.
 | **V3** ✅ | Real ERCOT day-ahead prices, same year and node as the weather | `prices.py`, `run_v3_prices.py` |
 | **V4** ✅ | Foresight validation: size by LP, operate under a receding horizon, report the gap | `run_v4_foresight.py`, `summarise_v4.py` |
 | **V5** ✅ | Workload classes, deadlines, inference SLAs | `workload.py`, `run_v5_workload.py` — **stayed an LP** |
-| **V6** | All fourteen overlapping years × sites; is the sign stable? | the publishable artefact |
+| **V6** ✅ | All fourteen overlapping years × sites; is the sign stable? | `run_v6_sweep.py`, `summarise_v6.py` |
 | **V7** | Interactive web app over a precomputed result cube | [`docs/web-app-todo.md`](docs/web-app-todo.md) |
 
 ~~MILP arrives only at V5, and only for deadline coupling.~~ It did not: V5's
