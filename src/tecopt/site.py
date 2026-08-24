@@ -35,6 +35,35 @@ sys.path.insert(0, str(PROJECT_1 / "src"))
 
 DALLAS = (32.78, -96.80)
 
+#: Sites this study can be run at, each paired with the ERCOT settlement point a
+#: load there would actually settle at. The pairing is the point: landmine 6 is
+#: about prices and weather coming from the same place as well as the same year,
+#: and a Dallas irradiance series priced at ``LZ_WEST`` is a different and
+#: entirely fictional site.
+#:
+#: West Texas is Midland-Odessa, which is where ERCOT's solar build actually
+#: went and therefore where the capture-price collapse V3 found is sharpest. It
+#: is a genuinely different site, not a sensitivity: more irradiance, a weaker
+#: load zone, and a price series that has inverted its diurnal shape since 2020.
+SITES = {
+    "dallas": {
+        "latitude": 32.78, "longitude": -96.80,
+        "settlement_point": "LZ_NORTH",
+        "note": "North zone load centre; project 1's weather record.",
+    },
+    "west_texas": {
+        "latitude": 31.95, "longitude": -102.35,
+        "settlement_point": "LZ_WEST",
+        "note": "Midland-Odessa; high irradiance, high solar penetration.",
+    },
+}
+
+
+def site_coords(name: str) -> tuple[float, float]:
+    if name not in SITES:
+        raise KeyError(f"unknown site {name!r}; known: {sorted(SITES)}")
+    return SITES[name]["latitude"], SITES[name]["longitude"]
+
 
 def pv_capacity_factor(latitude: float, longitude: float, year: int) -> np.ndarray:
     """AC output per unit installed DC nameplate, on the common annual scale."""

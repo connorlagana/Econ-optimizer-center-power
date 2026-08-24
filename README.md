@@ -399,6 +399,85 @@ Both are pinned by regression tests in `tests/test_operate.py`, including the
 
 ---
 
+## V6: is it a finding, or a fact about 2019?
+
+Every rung above ran on one weather year at one site. V3 showed that is not a
+detail but a hazard: the relationship between solar output and price *inverted*
+between 2020 and 2023, so a single year is a draw from a non-stationary process,
+and the 2019 the study inherited sits on the far side of the inversion.
+
+So sweep it. Fourteen years (2011–2024, the overlap of project 1's weather
+record with ERCOT's nodal price record), two sites each paired with the
+settlement point a load there would actually settle at, two interconnections
+either side of the crossover, rigid against the measured power cap at 98%.
+112 solves.
+
+The output is a distribution, and the only question worth asking of it is
+whether the **sign** is stable — because a conclusion that flips with the
+weather year is not a conclusion.
+
+| interconnection | median LCOC Δ | range | favourable | verdict |
+|---|---:|---:|---:|---|
+| 125 MW (100% of facility load) | +0.542% | [−0.170, +1.151] | **2 / 28** | flexibility does not pay |
+| 60 MW (48% of facility load) | −1.141% | [−1.539, −0.426] | **28 / 28** | flexibility pays |
+
+**At a scarce interconnection the trade is favourable in every year at every
+site, and it is never close to the line.** The worst case across fourteen years
+of ERCOT prices — including Uri, including the capture-price inversion — is
+−0.426%, and the best is −1.539%. At full facility load the trade is unfavourable
+in 26 of 28, and the two exceptions are both 2021, the year a winter storm made
+firm capacity worth more than anything else in the record.
+
+So V2's headline survives contact with the whole price record. That is worth
+more than the number it survived with.
+
+### The site changes the size, not the sign
+
+| site | median at 60 MW | median at 125 MW | rigid LCOC at 60 MW |
+|---|---:|---:|---:|
+| Dallas / `LZ_NORTH` | −1.399% | +0.738% | ~1.16 |
+| Midland-Odessa / `LZ_WEST` | −0.798% | +0.483% | ~1.13 |
+
+West Texas gets roughly **half** the benefit Dallas does, and the reason is not
+that flexibility works worse there — it is that the rigid design is already
+cheaper. A 23% better solar resource (2,550 vs 2,076 full-load hours per MW)
+means the plant that never throttles is less expensive to build in the first
+place, so there is less left for flexibility to save. Flexibility is worth most
+where the alternative is worst.
+
+### The result nobody would have predicted from a single year
+
+At a 125 MW interconnection, **whether the optimiser builds any solar at all
+flips between years.** Dallas:
+
+| built PV | years |
+|---|---|
+| none at all | 2012, 2013, 2014, 2015, 2016, 2017, 2020, 2024 |
+| 91–184 MW | 2011, 2018, 2019, 2021, 2022, 2023 |
+
+Eight of fourteen years build **zero** behind-the-meter solar; six build up to
+184 MW. This is the V3 mechanism — solar's energy value is `Σ cf(t)·price(t)`,
+which crosses its annualised cost somewhere in the middle of this record — now
+visible as a binary outcome rather than a percentage. A study that picked 2016
+and a study that picked 2019 would disagree about whether to build a solar farm,
+using the same model, the same site and the same cost basis.
+
+**Report the distribution or report nothing.** A single-year techno-economic
+result here is not merely imprecise; on the question it is most often asked to
+answer, it is a coin flip dressed as an optimisation.
+
+### What this rung does not cover
+
+One compute target (98%) and one cost basis. The frontier sweep and the ITC
+cases are the obvious next multiplications, and both are affordable — the
+constraint is that they multiply against fourteen years rather than one. The
+workload structure of V5 is *not* included here: a three-class solve is 1,126
+seconds against 40 for the pool, so a fourteen-year workload sweep is a
+different order of expense and belongs behind the LP speedups, not in front of
+them.
+
+---
+
 ## Landmines
 
 Ordered by how much damage each does if missed. The first four change the
@@ -515,7 +594,8 @@ twenty lines each in an LP. What is genuinely hard comes later.
 | **V3** ✅ | Real ERCOT day-ahead prices, same year and node as the weather | `prices.py`, `run_v3_prices.py` |
 | **V4** ✅ | Foresight validation: size by LP, operate under a receding horizon, report the gap | `run_v4_foresight.py`, `summarise_v4.py` |
 | **V5** | Workload classes, deadlines, inference SLAs | needs MILP or a rolling relaxation |
-| **V6** | All fifteen weather years × sites × cost cases; Pareto frontiers | the publishable artefact |
+| **V6** | All fourteen overlapping years × sites; is the sign stable? | the publishable artefact |
+| **V7** | Interactive web app over a precomputed result cube | [`docs/web-app-todo.md`](docs/web-app-todo.md) |
 
 MILP arrives only at V5, and only for deadline coupling. Everything before it
 stays an LP, which is what keeps a fifteen-year × multi-site sweep affordable.
@@ -540,6 +620,10 @@ the prototype.
 ../solar-project-1/.venv/bin/python scripts/summarise_v3.py
 ../solar-project-1/.venv/bin/python scripts/run_v4_foresight.py
 ../solar-project-1/.venv/bin/python scripts/summarise_v4.py
+../solar-project-1/.venv/bin/python scripts/run_v5_workload.py
+../solar-project-1/.venv/bin/python scripts/summarise_v5.py
+../solar-project-1/.venv/bin/python scripts/run_v6_sweep.py    # ~30 min on 5 cores
+../solar-project-1/.venv/bin/python scripts/summarise_v6.py
 ../solar-project-1/.venv/bin/python -m pytest
 ```
 

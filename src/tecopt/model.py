@@ -57,6 +57,7 @@ import cvxpy as cp
 import numpy as np
 
 from .inputs import Scenario, crf
+from .workload import WorkloadMix, _windows, diurnal_inference_profile
 
 Flexibility = Literal["rigid", "curtail", "powercap"]
 
@@ -83,6 +84,7 @@ class Result:
     compute_target_fraction: float
     status: str
     price_basis: dict
+    workload: dict | None
     design: Design
     annual_cost: float
     cost_breakdown: dict
@@ -97,6 +99,13 @@ class Result:
     gen_run_hours: float
     pv_curtailed_fraction: float
     mean_it_power_fraction: float
+
+
+def _allocation(active, hours: int) -> np.ndarray:
+    """Per-hour MW assigned to a class, whether it was a variable or a constant."""
+    if isinstance(active, (int, float)):
+        return np.full(hours, float(active))
+    return np.asarray(active.value, dtype=float)
 
 
 def concave_hull_segments(curve) -> list[tuple[float, float]]:
@@ -127,6 +136,8 @@ def optimise(
     coincident_peak_mask: np.ndarray | None = None,
     energy_price_per_mwh: float | np.ndarray | None = None,
     allow_export: bool = False,
+    workload: WorkloadMix | None = None,
+    local_hour: np.ndarray | None = None,
     solver: str = "HIGHS",
     verbose: bool = False,
 ) -> Result:
@@ -152,6 +163,12 @@ def optimise(
     plant with a different permit, and exporting stored energy is price
     arbitrage that deserves to be studied on its own rather than smuggled in
     as a side effect of sizing a data center.
+
+    ``workload`` replaces the single fungible compute pool with a mix of classes
+    that have deadlines and service levels (V5). ``None`` keeps V1 through V4's
+    pool exactly, so every earlier result reproduces. ``local_hour`` is the
+    hour-of-day for each step, needed to place the inference arrival profile;
+    it defaults to a plain 24-hour cycle from midnight.
     """
     cf = np.asarray(pv_capacity_factor, dtype=float)
     T = cf.size
@@ -185,9 +202,14 @@ def optimise(
     soc = cp.Variable(T + 1, nonneg=True)
     imports = cp.Variable(T, nonneg=True)
     gen_out = cp.Variable(T, nonneg=True)
-    p_it = cp.Variable(T, nonneg=True)
-    compute = cp.Variable(T, nonneg=True)
     exports = cp.Variable(T, nonneg=True)
+    # ``p_it`` and ``compute`` are plain variables for the single-pool model and
+    # *expressions* over the per-class variables for the workload model. Binding
+    # them with equality constraints instead would add 2xT redundant rows that
+    # alias one variable to another, which HiGHS pays for at every iteration.
+    if workload is None:
+        p_it = cp.Variable(T, nonneg=True)
+        compute = cp.Variable(T, nonneg=True)
     cp_demand = cp.Variable(nonneg=True, name="coincident_peak_mw")
 
     cons: list = []
@@ -250,23 +272,117 @@ def optimise(
     cons += [gen_out <= gen_mw, cp.sum(gen_out) <= lim.gen_annual_full_load_hours * gen_mw]
 
     # Compute demand and what it produces.
-    if flexibility == "rigid":
-        cons += [p_it == it_max, compute == 1.0]
-    else:
-        cons += [p_it <= it_max, p_it >= curve.idle_power_fraction * it_max]
-        if flexibility == "curtail":
-            # Park racks, do not power-cap them: work falls off proportionally.
-            # Isolates the value of *doing less* from the value of the curve.
-            cons.append(compute <= p_it / it_max)
-        elif flexibility == "powercap":
-            for slope, intercept in concave_hull_segments(curve):
-                cons.append(compute <= slope * p_it / it_max + intercept)
-        else:
-            raise ValueError(f"unknown flexibility mode {flexibility!r}")
-        cons.append(compute <= 1.0)
+    segments = concave_hull_segments(curve)
+    if flexibility not in ("rigid", "curtail", "powercap"):
+        raise ValueError(f"unknown flexibility mode {flexibility!r}")
 
-    compute_floor = cp.sum(compute) >= compute_target_fraction * T
-    cons.append(compute_floor)
+    class_vars: dict[str, dict] = {}
+
+    if workload is None:
+        # V1 through V4: one fungible pool with an annual target.
+        if flexibility == "rigid":
+            cons += [p_it == it_max, compute == 1.0]
+        else:
+            cons += [p_it <= it_max, p_it >= curve.idle_power_fraction * it_max]
+            if flexibility == "curtail":
+                # Park racks, do not power-cap them: work falls off proportionally.
+                # Isolates the value of *doing less* from the value of the curve.
+                cons.append(compute <= p_it / it_max)
+            else:
+                for slope, intercept in segments:
+                    cons.append(compute <= slope * p_it / it_max + intercept)
+            cons.append(compute <= 1.0)
+
+        compute_floor = cp.sum(compute) >= compute_target_fraction * T
+        cons.append(compute_floor)
+    else:
+        # V5: the fleet is shared between classes, hour by hour, and each
+        # class's work is tied to time differently.
+        #
+        # Allocation is *per hour*, not a fixed partition of the fleet. That is
+        # what a cluster scheduler actually does -- preemptible batch work
+        # backfills the capacity inference is not using at 4am -- and a fixed
+        # partition gets the physics wrong in a way that matters: it makes a
+        # peaky inference arrival profile infeasible against rigid compute,
+        # because a constant per-class output cannot follow a varying demand.
+        #
+        # ``active[k][t]`` is the nameplate MW assigned to class k in hour t.
+        # The concave hull stays linear in it because it is written absolutely:
+        # compute <= m·power + c·active, both products of a constant and a
+        # variable. See workload.py.
+        hours = (
+            np.arange(T) % 24 if local_hour is None
+            else np.asarray(local_hour, dtype=float)
+        )
+        idle = curve.idle_power_fraction
+        single = len(workload.classes) == 1
+
+        for spec in workload.classes:
+            # Allocation is an equality across classes, not an inequality.
+            # Assigning a GPU to a class is free and weakly increases what that
+            # class can produce -- the concave curve rewards spreading a fixed
+            # power budget over more silicon -- so an optimal solution always
+            # exists with the fleet fully allocated. Leaving it slack adds 8,760
+            # zero-cost directions and a family of alternate optima that the
+            # simplex has to walk through to reach the same answer.
+            #
+            # With one class the allocation is not a decision at all, so it is a
+            # constant and the formulation collapses exactly onto V1's.
+            active = it_max if single else cp.Variable(T, nonneg=True, name=f"active_{spec.name}")
+            power = cp.Variable(T, nonneg=True, name=f"power_{spec.name}")
+            produced = cp.Variable(T, nonneg=True, name=f"compute_{spec.name}")
+
+            if flexibility == "rigid":
+                cons += [power == active, produced == active / it_max]
+            else:
+                cons += [power <= active, power >= idle * active]
+                if flexibility == "curtail":
+                    cons.append(produced <= power / it_max)
+                else:
+                    # The last hull segment passes through (1, 1), so it already
+                    # implies produced <= active/it_max; stating that separately
+                    # would be a redundant row per hour per class.
+                    for slope, intercept in segments:
+                        cons.append(
+                            produced <= slope * power / it_max
+                            + intercept * active / it_max
+                        )
+
+            required = spec.share_of_compute * T * compute_target_fraction
+            if spec.kind == "batch":
+                cons.append(cp.sum(produced) >= required)
+            elif spec.kind == "deadline":
+                for window in _windows(T, spec.window_hours):
+                    span = window.stop - window.start
+                    cons.append(
+                        cp.sum(produced[window])
+                        >= spec.share_of_compute * span * compute_target_fraction
+                    )
+            elif spec.kind == "inference":
+                shape = (
+                    diurnal_inference_profile(hours)
+                    if spec.arrival_profile is None
+                    else np.asarray(spec.arrival_profile, dtype=float)
+                )
+                arrivals = shape / shape.sum() * spec.share_of_compute * T
+                cons.append(
+                    produced >= spec.sla_fraction * arrivals * compute_target_fraction
+                )
+            else:  # pragma: no cover - guarded by WorkloadClass
+                raise ValueError(f"unknown workload kind {spec.kind!r}")
+
+            class_vars[spec.name] = {
+                "spec": spec, "active": active,
+                "power": power, "compute": produced,
+            }
+
+        if not single:
+            cons.append(sum(cell["active"] for cell in class_vars.values()) == it_max)
+        p_it = sum(cell["power"] for cell in class_vars.values())
+        compute = sum(cell["compute"] for cell in class_vars.values())
+
+        compute_floor = cp.sum(compute) >= compute_target_fraction * T
+        cons.append(compute_floor)
 
     # Power balance. Non-IT load carries a fixed component that a throttle does
     # not shed — see Facility in inputs.py.
@@ -337,6 +453,31 @@ def optimise(
         flexibility=flexibility,
         compute_target_fraction=compute_target_fraction,
         status=problem.status,
+        workload=(
+            None if workload is None
+            else {
+                "classes": workload.describe(),
+                "mean_allocation_mw": {
+                    name: float(np.mean(_allocation(cell["active"], T)))
+                    for name, cell in class_vars.items()
+                },
+                "peak_allocation_mw": {
+                    name: float(np.max(_allocation(cell["active"], T)))
+                    for name, cell in class_vars.items()
+                },
+                "delivered_fraction_of_fleet_year": {
+                    name: float(arr(cell["compute"]).sum()) / T
+                    for name, cell in class_vars.items()
+                },
+                "mean_power_fraction": {
+                    name: (
+                        float(arr(cell["power"]).sum() / _allocation(cell["active"], T).sum())
+                        if _allocation(cell["active"], T).sum() > 1e-6 else 0.0
+                    )
+                    for name, cell in class_vars.items()
+                },
+            }
+        ),
         price_basis={
             "hourly": bool(np.ptp(price) > 0),
             "mean_per_mwh": float(price.mean()),
