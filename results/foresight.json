@@ -1,0 +1,176 @@
+[
+  {
+    "label": "60 MW grid, rigid @100%",
+    "grid_ceiling_mw": 60.0,
+    "mode": "rigid",
+    "target": 1.0,
+    "design": {
+      "pv_mw": 369.2927706908023,
+      "bess_mw": 150.58657714847328,
+      "bess_mwh": 1234.2451532163916,
+      "grid_mw": 60.0,
+      "gen_mw": 140.09064844178582
+    },
+    "shadow_price": 0.0,
+    "compute_price": 71477.29867775012,
+    "annual": {
+      "compute_fraction": 1.0,
+      "gen_energy_mwh": 70045.32422089297,
+      "coincident_peak_mw": 0.0,
+      "variable_cost": 18389758.449795842,
+      "net_value": 607751377.9672952
+    },
+    "runs": [
+      {
+        "forecast": "perfect",
+        "realised_nrmse_pct": 0.0,
+        "compute_fraction": 0.9752483711988009,
+        "shortfall_pp": 2.4751628801199077,
+        "unserved_mwh": 0.0,
+        "unserved_hours": 0,
+        "gen_energy_mwh": 70045.32422089294,
+        "gen_budget_mwh": 70045.32422089292,
+        "variable_cost": 17308257.303393338,
+        "net_value": 593334866.1279409,
+        "net_value_loss_pct": 2.372106812422574,
+        "coincident_peak_mw": 0.0,
+        "mean_it_power_fraction": 0.975248371198801,
+        "pv_curtailed_fraction": 0.07007125017833013,
+        "seconds": 17.72234291676432
+      },
+      {
+        "forecast": "noisy",
+        "realised_nrmse_pct": 10.019684610132026,
+        "compute_fraction": 0.9750687664755011,
+        "shortfall_pp": 2.4931233524498886,
+        "unserved_mwh": 0.0,
+        "unserved_hours": 0,
+        "gen_energy_mwh": 70045.32422089292,
+        "gen_budget_mwh": 70045.32422089292,
+        "variable_cost": 17466658.910924662,
+        "net_value": 593064006.6148567,
+        "net_value_loss_pct": 2.4166742988822674,
+        "coincident_peak_mw": 0.0,
+        "mean_it_power_fraction": 0.975068766475501,
+        "pv_curtailed_fraction": 0.07538806548347553,
+        "seconds": 18.020383291877806
+      }
+    ]
+  },
+  {
+    "label": "60 MW grid, powercap @98%",
+    "grid_ceiling_mw": 60.0,
+    "mode": "powercap",
+    "target": 0.98,
+    "design": {
+      "pv_mw": 344.7292433810221,
+      "bess_mw": 137.3186203179687,
+      "bess_mwh": 1129.7890831447903,
+      "grid_mw": 60.0,
+      "gen_mw": 22.679814830876722
+    },
+    "shadow_price": 107032.25559603819,
+    "compute_price": 71477.29867775012,
+    "annual": {
+      "compute_fraction": 0.9800000000000024,
+      "gen_energy_mwh": 11339.907415438434,
+      "coincident_peak_mw": 0.0,
+      "variable_cost": 17016619.202915665,
+      "net_value": 596601694.4858351
+    },
+    "runs": [
+      {
+        "forecast": "perfect",
+        "realised_nrmse_pct": 0.0,
+        "compute_fraction": 0.9748490033026038,
+        "shortfall_pp": 0.5150996697398602,
+        "unserved_mwh": 0.0,
+        "unserved_hours": 0,
+        "gen_energy_mwh": 11339.907415438283,
+        "gen_budget_mwh": 11339.907415438362,
+        "variable_cost": 16794958.750599593,
+        "net_value": 593598104.0123613,
+        "net_value_loss_pct": 0.5034498730450891,
+        "coincident_peak_mw": 1.3777836981497789e-13,
+        "mean_it_power_fraction": 0.9217373884982106,
+        "pv_curtailed_fraction": 0.0574612176120238,
+        "seconds": 18.0982976667583
+      },
+      {
+        "forecast": "noisy",
+        "realised_nrmse_pct": 10.019684610132026,
+        "compute_fraction": 0.9737815292511149,
+        "shortfall_pp": 0.6218470748887484,
+        "unserved_mwh": 0.0,
+        "unserved_hours": 0,
+        "gen_energy_mwh": 11339.90741543828,
+        "gen_budget_mwh": 11339.907415438362,
+        "variable_cost": 16850731.98708679,
+        "net_value": 592873941.3601791,
+        "net_value_loss_pct": 0.6248311327490733,
+        "coincident_peak_mw": 1.12996680272649e-13,
+        "mean_it_power_fraction": 0.9195220767201647,
+        "pv_curtailed_fraction": 0.06273840502627344,
+        "seconds": 18.412653792649508
+      }
+    ]
+  },
+  {
+    "label": "islanded, powercap @96%",
+    "grid_ceiling_mw": 0.0,
+    "mode": "powercap",
+    "target": 0.96,
+    "design": {
+      "pv_mw": 540.6266285205047,
+      "bess_mw": 231.6704366825107,
+      "bess_mwh": 1872.1298371738474,
+      "grid_mw": 0.0,
+      "gen_mw": 168.81283353802118
+    },
+    "shadow_price": 60396.56916140478,
+    "compute_price": 71477.29867775012,
+    "annual": {
+      "compute_fraction": 0.9600000000000244,
+      "gen_energy_mwh": 84406.4167690101,
+      "coincident_peak_mw": 0.0,
+      "variable_cost": 3523967.9001061716,
+      "net_value": 597571523.0603164
+    },
+    "runs": [
+      {
+        "forecast": "perfect",
+        "realised_nrmse_pct": 0.0,
+        "compute_fraction": 0.9344921264408125,
+        "shortfall_pp": 2.5507873559211913,
+        "unserved_mwh": 0.0,
+        "unserved_hours": 0,
+        "gen_energy_mwh": 84406.41676901064,
+        "gen_budget_mwh": 84406.4167690106,
+        "variable_cost": 3523967.900106195,
+        "net_value": 581599994.1223681,
+        "net_value_loss_pct": 2.6727392992480743,
+        "coincident_peak_mw": 0.0,
+        "mean_it_power_fraction": 0.8671247049036716,
+        "pv_curtailed_fraction": 0.17228510664927127,
+        "seconds": 18.247346124611795
+      },
+      {
+        "forecast": "noisy",
+        "realised_nrmse_pct": 10.019684610132026,
+        "compute_fraction": 0.9300892795414337,
+        "shortfall_pp": 2.9910720458590667,
+        "unserved_mwh": 139.47837328968737,
+        "unserved_hours": 17,
+        "gen_energy_mwh": 84406.41676901055,
+        "gen_budget_mwh": 84406.4167690106,
+        "variable_cost": 3523967.9001061907,
+        "net_value": 578843190.5613207,
+        "net_value_loss_pct": 3.134073793055466,
+        "coincident_peak_mw": 0.0,
+        "mean_it_power_fraction": 0.8611921304249145,
+        "pv_curtailed_fraction": 0.17801859119850688,
+        "seconds": 18.863051457330585
+      }
+    ]
+  }
+]

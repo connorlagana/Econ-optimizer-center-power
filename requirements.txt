@@ -1,0 +1,10 @@
+# Matches project 1's pinned set, because this project imports its modules and
+# an unpinned divergence would silently change results rather than fail.
+# cvxpy solves through HiGHS, which ships with scipy.
+numpy==2.4.6
+pandas==3.0.5
+scipy==1.17.1
+pvlib==0.15.2
+pyarrow==25.0.1
+cvxpy==1.9.2
+pytest==9.1.1
