@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+/*
+  Token system.
+
+  The page compares exactly two things — a plant that never throttles and one
+  that does — so those are the only two saturated hues on it. Everything else
+  (rules, labels, axes, surfaces) is achromatic, which means a glance at any
+  figure tells you which architecture a mark belongs to without reading a
+  legend. A third accent is reserved for the sign of the trade, because
+  "favourable" is the one judgement the study actually makes.
+*/
+:root {
+  color-scheme: light;
+
+  --surface:        #fbfbfa;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f2f2f0;
+  --rule:           #e2e2dd;
+  --rule-strong:    #c3c3bc;
+
+  --ink:            #16160f;
+  --ink-secondary:  #55554d;
+  --ink-muted:      #85857b;
+
+  --rigid:          #3a6ea5;
+  --flex:           #d9772b;
+  --rigid-wash:     #eef3f9;
+  --flex-wash:      #fdf2e8;
+
+  --favourable:     #1f7a5a;
+  --unfavourable:   #a8412c;
+
+  --warn-wash:      #fdf6e3;
+  --warn-rule:      #e4d5a8;
+  --warn-ink:       #6b5518;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --surface:        #14140f;
+    --surface-raised: #1c1c17;
+    --surface-sunken: #100f0b;
+    --rule:           #32322b;
+    --rule-strong:    #4b4b42;
+
+    --ink:            #f3f3ec;
+    --ink-secondary:  #b4b4a9;
+    --ink-muted:      #83837a;
+
+    --rigid:          #7bafe0;
+    --flex:           #f0a15c;
+    --rigid-wash:     #17222d;
+    --flex-wash:      #2a1e12;
+
+    --favourable:     #5ec79c;
+    --unfavourable:   #e58a72;
+
+    --warn-wash:      #241f10;
+    --warn-rule:      #4a4128;
+    --warn-ink:       #d8c68d;
+  }
+}
+
+@theme inline {
+  --color-surface:        var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-rule:           var(--rule);
+  --color-rule-strong:    var(--rule-strong);
+  --color-ink:            var(--ink);
+  --color-ink-secondary:  var(--ink-secondary);
+  --color-ink-muted:      var(--ink-muted);
+  --color-rigid:          var(--rigid);
+  --color-flex:           var(--flex);
+  --color-rigid-wash:     var(--rigid-wash);
+  --color-flex-wash:      var(--flex-wash);
+  --color-favourable:     var(--favourable);
+  --color-unfavourable:   var(--unfavourable);
+  --color-warn-wash:      var(--warn-wash);
+  --color-warn-rule:      var(--warn-rule);
+  --color-warn-ink:       var(--warn-ink);
+}
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  background: var(--surface);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-feature-settings: "kern";
+}
+
+/* Every quantity in this study is meant to be compared down a column. */
+.tnum { font-variant-numeric: tabular-nums; }
+
+input[type="range"] {
+  accent-color: var(--flex);
+  width: 100%;
+}

@@ -1,7 +1,12 @@
 # TODO: turn this into a web app
 
-Not started. This is the design brief, written while the numbers were fresh, so
-that whoever picks it up does not have to re-derive the two facts that decide the
+**Built.** See [`../web/`](../web/) and `scripts/build_cube.py`. This brief is
+kept as written, because the reasoning that decided the architecture is worth
+more than a description of what got shipped; what actually differed from it is
+recorded at the bottom.
+
+This was the design brief, written while the numbers were fresh, so that whoever
+picked it up did not have to re-derive the two facts that decide the
 architecture.
 
 ## The two facts that decide it
@@ -133,3 +138,60 @@ The prices are real and sourced. Nothing else is. Either replace the capex basis
 with sourced figures (NREL ATB is the obvious start) or make the provenance
 badges load-bearing enough that no one can screenshot a number without also
 screenshotting that it is made up.
+
+
+---
+
+## What was built, and where it departed from this brief
+
+**The cube is 792 cells, not 5,600.** Option 1 above — four representative years
+rather than fourteen — plus the observation the brief already made, that rigid
+needs no compute-target axis. Two sites x 4 years x 11 interconnections gives 88
+rigid cells; the same grid crossed with 8 compute targets gives 704 power-capped
+ones. About two and a half hours on seven cores.
+
+The 65 s per solve in this brief was an average over a mixed bag and it hides
+the split that matters: **a rigid solve is ~10 s and a power-capped one ~90 s**,
+because the concave hull's per-segment constraints are what make the LP large.
+That is why the cheap axis is the one that got kept whole.
+
+**The interconnection grid is dense between 75 and 125 MW.** V2 put the
+crossover near 85 MW on a flat price and V3 near 108 MW on real hourly prices,
+and a sparse grid there would have made the headline figure interpolate across
+the sign change rather than show it.
+
+**`it_nameplate_mw` is not a free axis.** This brief lists it as one. It is not:
+scaling the fleet without scaling the interconnection ceiling puts a different
+load against the same wire, which changes the physics and needs a solve. The
+other four GPU knobs are genuinely free and are exposed as sliders. The
+distinction is documented in `web/src/lib/lcoc.ts` and enforced by there being
+no control for it.
+
+**Figure 3 does not come from the cube.** The year distribution is one compute
+target across every year, which `results/v6_sweep.json` already contains at full
+fourteen-year resolution. `scripts/build_v6_strip.py` reduces it rather than
+re-solving. The one wrinkle is that V6 stored `lcoc` but not
+`compute_unit_hours`, which the browser needs when the GPU slider moves; it is
+recovered exactly by inverting the LCOC identity, and the script asserts the
+recovered value against `target * 8760` rather than assuming it.
+
+**The cube carries its own provenance.** Every cell ships with the full
+`Scenario` dict, the git SHA, the solver and library versions and the price
+basis, and the provenance panel renders them. A cube whose numbers cannot be
+traced to the inputs that produced them is exactly the screenshot machine this
+brief warned about.
+
+**`npm test` cross-checks the browser against the optimiser.** The TypeScript
+LCOC arithmetic is asserted to reproduce `lcoc_default_basis` on every cell in
+the cube. If the two ever disagree, the sliders are showing a different study
+than the one that was solved, and the test says so before a reader does.
+
+### Still open
+
+- The GPU-capex slider moves the crossover, which is what this brief wanted, but
+  there is no way to *read off* the capex at which the crossover reaches a given
+  interconnection. An inverse readout would be a better tool than a slider.
+- No ITC variant, no export variant, no flat-price variant. They are separate
+  published cubes, as the brief says, and none is built.
+- Featured hourly dispatch for three or four designs is not shipped. The cube is
+  scalars only, so the page cannot yet show anybody a week of operation.

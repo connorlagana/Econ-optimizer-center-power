@@ -8,3 +8,7 @@ __pycache__/
 # demand. The derived parquet next to them is the artefact worth versioning --
 # it is a quarter the size and it is what every result was computed from.
 data/prices/raw/
+
+# Cube build checkpoint: 792 lines of intermediate cells. web/public/cube.json
+# is the artefact worth versioning; this is how it survives a kill -9.
+results/cube_cells.jsonl
