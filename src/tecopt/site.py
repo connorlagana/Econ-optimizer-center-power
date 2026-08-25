@@ -49,12 +49,12 @@ SITES = {
     "dallas": {
         "latitude": 32.78, "longitude": -96.80,
         "settlement_point": "LZ_NORTH",
-        "note": "North zone load centre; project 1's weather record.",
+        "note": "A big-city site in north Texas: less sun than the west of the state, but a stronger local grid.",
     },
     "west_texas": {
         "latitude": 31.95, "longitude": -102.35,
         "settlement_point": "LZ_WEST",
-        "note": "Midland-Odessa; high irradiance, high solar penetration.",
+        "note": "Oil country in west Texas: much more sun, but so many solar farms have been built there that midday power is now nearly worthless.",
     },
 }
 
